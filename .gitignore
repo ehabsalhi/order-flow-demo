@@ -1,0 +1,24 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## IDE
+.vs/
+.vscode/
+.idea/
+
+## Logs
+logs/
+*.log
+
+## Secrets
+appsettings.*.local.json
+secrets.json
+
+## OS
+.DS_Store
+Thumbs.db
