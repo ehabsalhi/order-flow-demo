@@ -8,14 +8,10 @@ public class ProductConfiguration : IEntityTypeConfiguration<Product>
 {
     public void Configure(EntityTypeBuilder<Product> builder)
     {
-        builder.ToTable("Products");
+        builder.HasQueryFilter(p => !p.IsDeleted);
 
-        builder.HasKey(p => p.Id);
-
-        builder.Property(p => p.Name).IsRequired().HasMaxLength(200);
+        builder.Property(p => p.Name).HasMaxLength(200);
         builder.Property(p => p.Description).HasMaxLength(1000);
-        builder.Property(p => p.Price).HasColumnType("decimal(18,2)");
-        builder.Property(p => p.Stock).IsRequired();
 
         builder.HasIndex(p => p.CategoryId);
     }

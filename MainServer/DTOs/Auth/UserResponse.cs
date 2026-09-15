@@ -6,4 +6,5 @@ public record UserResponse(
     string LastName,
     string Email,
     string Role,
-    DateTime CreatedAt);
+    DateTime CreatedAt
+);

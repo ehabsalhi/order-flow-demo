@@ -10,8 +10,8 @@ public static class PaginationHelper
         PaginationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var page = request.NormalizedPage;
-        var pageSize = request.NormalizedPageSize;
+        var page = request.GetNormalizedPage();
+        var pageSize = request.GetNormalizedPageSize();
 
         var totalCount = await query.CountAsync(cancellationToken);
         var totalPages = totalCount == 0 ? 0 : (int)Math.Ceiling(totalCount / (double)pageSize);

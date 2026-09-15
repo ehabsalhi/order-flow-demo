@@ -5,4 +5,5 @@ public record CategoryResponse(
     string Name,
     string? Description,
     DateTime CreatedAt,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt
+);

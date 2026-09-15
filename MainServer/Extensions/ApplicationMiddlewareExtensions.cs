@@ -19,7 +19,6 @@ public static class ApplicationMiddlewareExtensions
         }
 
         app.UseSerilogRequestLogging();
-        app.UseHttpsRedirection();
         app.UseCors(CorsExtensions.DevelopmentPolicy);
         app.UseAuthentication();
         app.UseAuthorization();

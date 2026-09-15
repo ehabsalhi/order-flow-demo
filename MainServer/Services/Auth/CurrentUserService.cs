@@ -1,6 +1,6 @@
 using MainServer.Helpers;
 
-namespace MainServer.Services;
+namespace MainServer.Services.Auth;
 
 public class CurrentUserService(IHttpContextAccessor httpContextAccessor) : ICurrentUserService
 {

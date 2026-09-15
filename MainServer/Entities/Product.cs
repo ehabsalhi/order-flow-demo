@@ -10,6 +10,7 @@ public class Product
     public int CategoryId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public bool IsDeleted { get; set; }
 
     public Category Category { get; set; } = null!;
     public ICollection<OrderItem> OrderItems { get; set; } = [];

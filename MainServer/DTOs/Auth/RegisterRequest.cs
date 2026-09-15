@@ -4,4 +4,7 @@ public record RegisterRequest(
     string FirstName,
     string LastName,
     string Email,
-    string Password);
+    string Password)
+{
+    public string NormalizedEmail => EmailNormalization.Normalize(Email);
+}

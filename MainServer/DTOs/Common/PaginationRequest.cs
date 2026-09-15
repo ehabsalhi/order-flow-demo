@@ -5,20 +5,17 @@ public class PaginationRequest
     private const int MaxPageSize = 100;
 
     public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
+    public int PageSize { get; set; } = 10;
 
-    public int NormalizedPage => Page < 1 ? 1 : Page;
+    public int GetNormalizedPage() => Page < 1 ? 1 : Page;
 
-    public int NormalizedPageSize
+    public int GetNormalizedPageSize()
     {
-        get
+        if (PageSize < 1)
         {
-            if (PageSize < 1)
-            {
-                return 20;
-            }
-
-            return PageSize > MaxPageSize ? MaxPageSize : PageSize;
+            return 10;
         }
+
+        return PageSize > MaxPageSize ? MaxPageSize : PageSize;
     }
 }

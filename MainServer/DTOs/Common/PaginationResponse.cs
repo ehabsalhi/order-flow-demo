@@ -5,4 +5,5 @@ public record PaginationResponse<T>(
     int Page,
     int PageSize,
     int TotalCount,
-    int TotalPages);
+    int TotalPages
+);

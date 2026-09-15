@@ -26,7 +26,7 @@ public static class DbSeeder
             Email = "admin@demo.local",
             Role = UserRole.Admin,
             CreatedAt = now,
-            UpdatedAt = now
+            UpdatedAt = now,
         };
         admin.PasswordHash = passwordHasher.HashPassword(admin, "Admin123!");
 
@@ -37,7 +37,7 @@ public static class DbSeeder
             Email = "customer@demo.local",
             Role = UserRole.Customer,
             CreatedAt = now,
-            UpdatedAt = now
+            UpdatedAt = now,
         };
         customer.PasswordHash = passwordHasher.HashPassword(customer, "Customer123!");
 
@@ -47,7 +47,7 @@ public static class DbSeeder
         {
             new() { Name = "Electronics", Description = "Electronic devices", CreatedAt = now, UpdatedAt = now },
             new() { Name = "Computers", Description = "Computers and laptops", CreatedAt = now, UpdatedAt = now },
-            new() { Name = "Accessories", Description = "Computer and phone accessories", CreatedAt = now, UpdatedAt = now }
+            new() { Name = "Accessories", Description = "Computer and phone accessories", CreatedAt = now, UpdatedAt = now },
         };
         context.Categories.AddRange(categories);
         await context.SaveChangesAsync();
@@ -58,7 +58,7 @@ public static class DbSeeder
             new() { Name = "MacBook", Description = "Apple laptop", Price = 1499.99m, Stock = 30, CategoryId = categories[1].Id, CreatedAt = now, UpdatedAt = now },
             new() { Name = "AirPods", Description = "Wireless earbuds", Price = 199.99m, Stock = 100, CategoryId = categories[0].Id, CreatedAt = now, UpdatedAt = now },
             new() { Name = "Keyboard", Description = "Mechanical keyboard", Price = 89.99m, Stock = 75, CategoryId = categories[2].Id, CreatedAt = now, UpdatedAt = now },
-            new() { Name = "Mouse", Description = "Wireless mouse", Price = 49.99m, Stock = 120, CategoryId = categories[2].Id, CreatedAt = now, UpdatedAt = now }
+            new() { Name = "Mouse", Description = "Wireless mouse", Price = 49.99m, Stock = 120, CategoryId = categories[2].Id, CreatedAt = now, UpdatedAt = now },
         };
         context.Products.AddRange(products);
 

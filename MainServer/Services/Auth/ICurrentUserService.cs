@@ -1,4 +1,4 @@
-namespace MainServer.Services;
+namespace MainServer.Services.Auth;
 
 public interface ICurrentUserService
 {

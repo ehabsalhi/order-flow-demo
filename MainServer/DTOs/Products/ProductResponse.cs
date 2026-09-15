@@ -9,4 +9,5 @@ public record ProductResponse(
     int CategoryId,
     string CategoryName,
     DateTime CreatedAt,
-    DateTime UpdatedAt);
+    DateTime UpdatedAt
+);

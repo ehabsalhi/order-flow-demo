@@ -8,14 +8,14 @@ public class CategoryConfiguration : IEntityTypeConfiguration<Category>
 {
     public void Configure(EntityTypeBuilder<Category> builder)
     {
-        builder.ToTable("Categories");
+        builder.HasQueryFilter(c => !c.IsDeleted);
 
-        builder.HasKey(c => c.Id);
-
-        builder.Property(c => c.Name).IsRequired().HasMaxLength(100);
+        builder.Property(c => c.Name).HasMaxLength(100);
         builder.Property(c => c.Description).HasMaxLength(500);
 
-        builder.HasIndex(c => c.Name).IsUnique();
+        builder.HasIndex(c => c.Name)
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = false");
 
         builder.HasMany(c => c.Products)
             .WithOne(p => p.Category)
