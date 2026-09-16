@@ -5,8 +5,8 @@ its **own PostgreSQL database** and never connects to or queries the Main Server
 
 It communicates in two directions:
 
-- **Synchronous** command in: the Main Server calls the service (REST **and** gRPC) to charge an
-  order and gets the result back immediately.
+- **Synchronous** command in: the Main Server charges an order over **gRPC**.
+- **Synchronous** queries in: the Main Server reads payments over **HTTP/REST**.
 - **Asynchronous** events out: after a charge completes, the service publishes
   `payment.succeeded` / `payment.failed` events to **RabbitMQ** (via a transactional outbox) so
   other services can react without being coupled to the payment call.
@@ -90,44 +90,11 @@ Base URL (dev): `http://localhost:3100`
 
 | Method | Route                          | Description                                  |
 |--------|--------------------------------|----------------------------------------------|
-| POST   | `/api/payments`                | Create + process a payment                   |
 | GET    | `/api/payments/{id}`           | Get a payment by id                          |
 | GET    | `/api/payments/order/{orderId}`| List payments for an order (paginated)       |
 
-`GET /api/payments/order/{orderId}` accepts `?page=` and `?pageSize=` query params
-(defaults `1` / `10`, max page size `100`) and returns a paginated envelope.
-
-### Create a payment
-
-```http
-POST /api/payments
-Content-Type: application/json
-
-{
-  "orderId": 123,
-  "amount": 150.00,
-  "currency": "USD"
-}
-```
-
-Response `201 Created`:
-
-```json
-{
-  "success": true,
-  "data": {
-    "paymentId": 1,
-    "orderId": 123,
-    "amount": 150.00,
-    "currency": "USD",
-    "status": "Succeeded",
-    "transactionId": "TXN-1A2B3C4D5E",
-    "provider": "Mock",
-    "createdAt": "2026-09-16T14:15:00Z",
-    "updatedAt": "2026-09-16T14:15:00Z"
-  }
-}
-```
+Writes go through gRPC (`CreatePayment`), not REST. `GET /api/payments/order/{orderId}` accepts
+`?page=` and `?pageSize=` (defaults `1` / `10`, max page size `100`).
 
 ### Get a payment
 
@@ -191,7 +158,7 @@ service Payments {
 - Errors map to gRPC status codes via `GrpcExceptionInterceptor`: validation → `InvalidArgument`,
   not found → `NotFound`, conflict → `AlreadyExists`.
 
-Both REST and gRPC call the same `IPaymentService`, so the business logic is shared.
+REST queries and the gRPC `CreatePayment` call share the same `IPaymentService` business logic.
 
 ## Asynchronous events (RabbitMQ + transactional outbox)
 
@@ -284,7 +251,8 @@ Endpoints (dev):
 ## Design decisions
 
 - **Independent database** — separate `orderflow_payments`; no FK to the Main Server.
-- **Sync command via REST + gRPC** — the Main Server charges an order and gets the result back.
+- **Sync command via gRPC** — the Main Server charges an order and gets the result back.
+- **Sync queries via HTTP** — payment reads stay REST (pagination, Swagger, easy to call).
 - **Async events via RabbitMQ + outbox** — status changes are published reliably, decoupling the
   Order service from the payment call.
 - **Idempotency guard** — a second charge for an already-paid order returns `409`, preventing

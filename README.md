@@ -143,10 +143,12 @@ Query params for listing: `page`, `pageSize`, `search`, `categoryId`, `sortBy` (
 
 | Method | Route                      | Auth              |
 |--------|----------------------------|-------------------|
-| POST   | /api/orders                | Authenticated     |
-| GET    | /api/orders/{id}           | Owner or Admin    |
-| GET    | /api/orders/my-orders      | Authenticated     |
-| PUT    | /api/orders/{id}/cancel    | Owner or Admin    |
+| POST   | /api/orders                    | Authenticated     |
+| GET    | /api/orders/{id}               | Owner or Admin    |
+| GET    | /api/orders/my-orders          | Authenticated     |
+| PUT    | /api/orders/{id}/cancel        | Owner or Admin    |
+| GET    | /api/payments/{id}             | Owner or Admin    |
+| GET    | /api/payments/order/{orderId}  | Owner or Admin    |
 | GET    | /api/admin/orders          | Admin             |
 
 Admin order filters: `status`, `userId`, `fromDate`, `toDate`, `page`, `pageSize`.

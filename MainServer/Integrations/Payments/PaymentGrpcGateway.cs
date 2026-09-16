@@ -2,7 +2,7 @@ using System.Globalization;
 using MainServer.Grpc;
 using PaymentsClient = MainServer.Grpc.Payments.PaymentsClient;
 
-namespace MainServer.Services.Payments;
+namespace MainServer.Integrations.Payments;
 
 public class PaymentGrpcGateway(PaymentsClient client) : IPaymentGateway
 {

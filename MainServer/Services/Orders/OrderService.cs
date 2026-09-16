@@ -5,7 +5,7 @@ using MainServer.Entities.Enums;
 using MainServer.Exceptions;
 using MainServer.Repositories.Orders;
 using MainServer.Services.Auth;
-using MainServer.Services.Payments;
+using MainServer.Integrations.Payments;
 
 namespace MainServer.Services.Orders;
 

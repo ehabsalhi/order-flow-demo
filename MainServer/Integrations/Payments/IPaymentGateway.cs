@@ -1,4 +1,4 @@
-namespace MainServer.Services.Payments;
+namespace MainServer.Integrations.Payments;
 
 public record PaymentResult(int PaymentId, string Status, string? TransactionId);
 

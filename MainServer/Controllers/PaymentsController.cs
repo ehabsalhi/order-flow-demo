@@ -1,16 +1,19 @@
+using MainServer.DTOs.Common;
+using MainServer.DTOs.Payments;
+using MainServer.Services.Payments;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PaymentService.DTOs;
-using PaymentService.DTOs.Common;
-using PaymentService.Services;
 
-namespace PaymentService.Controllers;
+namespace MainServer.Controllers;
 
 [Route("api/payments")]
+[Authorize]
 public class PaymentsController(IPaymentService paymentService) : ApiControllerBase
 {
     [HttpGet("{id:int}")]
     [ProducesResponseType<ApiResponse<PaymentResponse>>(StatusCodes.Status200OK)]
-    [ProducesResponseType<ApiErrorResponse>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPayment(int id, CancellationToken cancellationToken)
     {
         var result = await paymentService.GetPaymentByIdAsync(id, cancellationToken);
@@ -21,6 +24,8 @@ public class PaymentsController(IPaymentService paymentService) : ApiControllerB
     [ProducesResponseType<ApiResponse<PaginationResponse<PaymentResponse>>>(
         StatusCodes.Status200OK
     )]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPaymentsByOrder(
         int orderId,
         [FromQuery] PaginationRequest request,
