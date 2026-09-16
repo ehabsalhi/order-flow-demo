@@ -65,6 +65,31 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  notification-service:
+    build:
+      context: ..
+      dockerfile: docker/NotificationService.Dockerfile
+    container_name: orderflow-notification-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=orderflow_notifications;Username=postgres;Password=postgres
+      RabbitMq__HostName: rabbitmq
+    ports:
+      - "3200:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
   main-server:
     build:
       context: ..
@@ -76,6 +101,7 @@ services:
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=orderflow;Username=postgres;Password=postgres
       Services__PaymentServiceHttp: http://payment-service:3100
       Services__PaymentServiceGrpc: http://payment-service:3101
+      Services__NotificationServiceHttp: http://notification-service:8080
       RabbitMq__HostName: rabbitmq
       JwtSettings__Secret: DEV_ONLY_SECRET_CHANGE_BEFORE_PRODUCTION_32CHARS
     ports:
@@ -86,6 +112,8 @@ services:
       rabbitmq:
         condition: service_healthy
       payment-service:
+        condition: service_healthy
+      notification-service:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8080'"]

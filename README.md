@@ -1,298 +1,122 @@
-# OrderFlow Main Server
+# OrderFlow
 
-ASP.NET Core Web API main server for a small e-commerce / order management demo. This project owns authentication, users, products, categories, orders, and order items in a single PostgreSQL database.
+An e-commerce demo that splits **orders**, **payments**, and **notifications** into separate services, each with its own PostgreSQL database. The client talks only to the Main Server.
 
-Payment and Notification services are intentionally **outside** this repository and can be integrated later.
+## Run with Docker
 
-## Architecture
+From the repo root:
+
+```bash
+Run:
+docker compose -f docker/docker-compose.yml up --build -d
+
+Stop:
+docker compose -f docker/docker-compose.yml down
+```
+
+| What                    | URL                                                              |
+| ----------------------- | ---------------------------------------------------------------- |
+| Main Server Swagger     | [http://localhost:3000/swagger](http://localhost:3000/swagger)   |
+| Payment Service Swagger | [http://localhost:3100/swagger](http://localhost:3100/swagger)   |
+| Notification Swagger    | [http://localhost:3200/swagger](http://localhost:3200/swagger)   |
+| RabbitMQ UI             | [http://localhost:15672](http://localhost:15672) (guest / guest) |
+| Postgres                | `localhost:5432`                                                 |
+
+Demo login:
+
+User Account: `customer@demo.local` / `Customer123!`
+
+Admin Account: `admin@demo.local` / `Admin123!`
+
+## What it does
 
 ```text
-Client (Swagger / Frontend)
-        |
-        v
-ASP.NET Core Main Server
-        |
-        v
-   PostgreSQL
+Client → Main Server (auth, products, orders)
+              │
+              ├── gRPC (sync)  → Payment Service  "charge this order now"
+              └── RabbitMQ (async) ← Payment Service  "payment succeeded / failed"
+                         ├── Main Server        → order Paid / Cancelled
+                         └── Notification Service → store + mock send
 ```
 
-## Technologies
+1. User creates an order on the Main Server.
+2. Main Server charges via **gRPC** and waits for Succeeded / Failed.
+3. Payment Service saves the payment and an outbox row in one DB transaction.
+4. A worker publishes `payment.succeeded` / `payment.failed` to **RabbitMQ**.
+5. Main Server consumes the event and sets the order to Paid or Cancelled.
+6. Notification Service also consumes `payment.*`, saves a notification, and a mock sender “sends” it. Admins can list notifications through the Main Server HTTP API.
 
-- ASP.NET Core 9 Web API
-- Entity Framework Core + PostgreSQL
-- JWT Bearer authentication
-- FluentValidation
-- ASP.NET Core `PasswordHasher` for password hashing
-- Serilog structured logging
-- Swagger / OpenAPI (with persistent JWT authorization)
+## Services
 
-## Project structure
+**Main Server** — public API. Owns users, products, categories, orders, JWT auth. Does not store payments or notifications. Calls Payment Service to charge (gRPC) and to read payments (HTTP); updates order status from `payment.*` events. Proxies the admin notification list over HTTP.
+
+**Payment Service** — owns payments. Own database. gRPC for charging, HTTP for reads (`GET /api/payments/...`). Writes the payment and an outbox row in one commit; a worker publishes `payment.succeeded` / `payment.failed` to RabbitMQ. Main Server is the only caller. Notification Service does not call it.
+
+**Notification Service** — owns notification records. Own database. Listens to `payment.*` only (no gRPC, no calls to Payment Service). Saves a notification and a mock sender “sends” it. One admin HTTP list API (`?orderId=` `&status=`); Main Server proxies it with JWT.
+
+## Why three databases
+
+This is **data ownership**: the service that owns a concept is the only one allowed to write (and usually read) that data.
+
+- Main Server owns orders → database `orderflow`
+- Payment Service owns payments → database `orderflow_payments`
+- Notification Service owns notifications → database `orderflow_notifications`
+
+They do **not** share tables or foreign keys across databases. `OrderId` on a payment is just a number, not a FK to `orderflow`. If the Payment Service queried the Main Server DB, it would no longer be independent: schema changes, downtime, and deploys would couple both services.
+
+Each service can migrate, scale, and fail on its own. They talk only over APIs and events (gRPC / HTTP / RabbitMQ), not by joining each other's tables.
+
+## Why gRPC, RabbitMQ, and the outbox
+
+**gRPC** — used for **charging**. it's typed, fast, and meant for service-to-service calls.
+
+**RabbitMQ** — used **after** the charge. The Payment Service publishes `payment.succeeded` / `payment.failed`. Main Server and Notification Service each bind their own queue to `payment.*`. If a consumer is down, the message waits in that queue.
+
+**Outbox table** (`OutboxMessages` in the payments DB) — Postgres and RabbitMQ cannot share one transaction. Without an outbox:
 
 ```text
-MainServer/
-├── Controllers/
-├── Services/
-├── Entities/
-├── DTOs/
-├── Validators/
-├── Data/
-├── Exceptions/
-├── Middleware/
-├── Extensions/
-├── Mappings/
-├── Helpers/
-├── Migrations/
-├── Program.cs
-└── appsettings.json
+1. Save payment = Succeeded   ✅
+2. App or RabbitMQ dies
+3. Event never published      ❌  → order stays Pending forever
 ```
 
-## Prerequisites
+So the Payment Service writes the payment **and** the event row in the **same** database commit. A background worker then sends the row to RabbitMQ and sets `PublishedAt`. If RabbitMQ is down, the API still works; events drain when the broker is back. Retry cap parks a message after 5 failed publishes (`RetryCount`) instead of looping forever.
 
-- .NET 9 SDK
-- PostgreSQL 16 (local install or Docker)
+HTTP is used for **reads** (`GET /api/payments/...`) because pagination and Swagger fit REST.
 
-## How to run
-
-### Docker Compose (recommended)
-
-Starts Postgres (both databases), RabbitMQ, the Payment Service, and the Main Server:
-
-```bash
-docker compose -f docker/docker-compose.yml up --build
-```
-
-| Service | URL |
-|---------|-----|
-| Main Server Swagger | http://localhost:3000/swagger |
-| Payment Service Swagger | http://localhost:3100/swagger |
-| RabbitMQ management | http://localhost:15672 (guest / guest) |
-| Postgres | localhost:5432 |
-
-- Main Server DB: `orderflow`
-- Payment Service DB: `orderflow_payments` (created by `docker/postgres/init.sql`)
-
-If Postgres was created by an older compose file, recreate volumes so the second database is initialized:
-
-```bash
-docker compose -f docker/docker-compose.yml down -v
-docker compose -f docker/docker-compose.yml up --build
-```
-
-Stop with `Ctrl+C`, or run in the background with `docker compose -f docker/docker-compose.yml up --build -d`.
-
-### Run locally without Docker for the apps
-
-### 1. Start PostgreSQL and RabbitMQ
-
-```bash
-docker compose -f docker/docker-compose.yml up -d postgres rabbitmq
-```
-
-Default Main Server connection (also in `appsettings.Development.json`):
+## Structure
 
 ```text
-Host=localhost;Port=5432;Database=orderflow;Username=postgres;Password=postgres
+MainServer/            public API + gRPC/HTTP clients + RabbitMQ consumer
+PaymentService/        payments API + gRPC server + outbox publisher
+NotificationService/   notifications API + RabbitMQ consumer (payment.*)
+docker/                compose, Dockerfiles, Postgres init
 ```
 
-Create the payments database if it does not exist:
+Main Server: `Controllers` → `Services` → `Repositories` (own DB) or `Integrations/Payments` / `Integrations/Notifications` (other services).
 
-```bash
-psql -U postgres -c "CREATE DATABASE orderflow_payments;"
-```
+Payment Service: `Controllers` / `Grpc` → `Services` → `PaymentDbContext`. Events go through `Messaging` (outbox → RabbitMQ).
 
-### 2. Restore, migrate, and run
+Notification Service: `Controllers` → `Services` → `NotificationDbContext`. `Messaging` consumes `payment.*`.
 
-```bash
-dotnet restore
-dotnet ef database update --project MainServer
-dotnet ef database update --project PaymentService
-dotnet run --project PaymentService
-dotnet run --project MainServer
-```
+## Stack (and why)
 
-Swagger UI: `http://localhost:3000/swagger`
+- **ASP.NET Core 9** — APIs
+- **EF Core + PostgreSQL** — one database per service (independent ownership)
+- **JWT** — Main Server auth
+- **FluentValidation** — input validation
+- **gRPC** — sync charge between services
+- **RabbitMQ + outbox** — async status events without losing messages if the broker is down
+- **Swagger** — try the APIs
+- **Docker Compose** — run everything together
 
-On first run in **Development**, the Main Server applies migrations and seeds demo data automatically.
+## Useful APIs (Main Server)
 
-## Development credentials (dev only)
-
-| Role     | Email               | Password      |
-|----------|---------------------|---------------|
-| Admin    | admin@demo.local    | Admin123!     |
-| Customer | customer@demo.local | Customer123!  |
-
-Do not use these credentials in production.
-
-## Authentication
-
-1. **Register** a customer: `POST /api/auth/register`
-2. **Login**: `POST /api/auth/login` — copy the JWT from the response
-3. In Swagger, click **Authorize**
-4. Enter: `Bearer {your-token}`
-5. Call protected endpoints
-
-Swagger is configured with `PersistAuthorization = true`, so the token remains in browser storage after closing/reopening the Swagger tab until you remove it or it expires.
-
-## Authorization summary
-
-| Role     | Permissions |
-|----------|-------------|
-| Public   | Browse products and categories |
-| Customer | Create orders, view/cancel own orders |
-| Admin    | Manage products/categories, view all orders |
-
-**Cancellation rule:** only `Pending` orders can be cancelled. Stock is restored on cancel.
-
-## API endpoints
-
-### Auth
-
-| Method | Route                | Auth   |
-|--------|----------------------|--------|
-| POST   | /api/auth/register   | Public |
-| POST   | /api/auth/login      | Public |
-
-### Products
-
-| Method | Route                 | Auth        |
-|--------|-----------------------|-------------|
-| GET    | /api/products         | Public      |
-| GET    | /api/products/{id}    | Public      |
-| POST   | /api/products         | Admin       |
-| PUT    | /api/products/{id}    | Admin       |
-| DELETE | /api/products/{id}    | Admin       |
-
-Query params for listing: `page`, `pageSize`, `search`, `categoryId`, `sortBy` (`name`|`price`|`createdAt`), `sortDirection` (`asc`|`desc`).
-
-### Categories
-
-| Method | Route                   | Auth   |
-|--------|-------------------------|--------|
-| GET    | /api/categories         | Public |
-| GET    | /api/categories/{id}    | Public |
-| POST   | /api/categories         | Admin  |
-| PUT    | /api/categories/{id}    | Admin  |
-| DELETE | /api/categories/{id}    | Admin  |
-
-### Orders
-
-| Method | Route                      | Auth              |
-|--------|----------------------------|-------------------|
-| POST   | /api/orders                    | Authenticated     |
-| GET    | /api/orders/{id}               | Owner or Admin    |
-| GET    | /api/orders/my-orders          | Authenticated     |
-| PUT    | /api/orders/{id}/cancel        | Owner or Admin    |
-| GET    | /api/payments/{id}             | Owner or Admin    |
-| GET    | /api/payments/order/{orderId}  | Owner or Admin    |
-| GET    | /api/admin/orders          | Admin             |
-
-Admin order filters: `status`, `userId`, `fromDate`, `toDate`, `page`, `pageSize`.
-
-## Example requests
-
-### Register
-
-```json
-POST /api/auth/register
-{
-  "firstName": "Jane",
-  "lastName": "Doe",
-  "email": "jane@example.com",
-  "password": "Password123"
-}
-```
-
-### Login
-
-```json
-POST /api/auth/login
-{
-  "email": "customer@demo.local",
-  "password": "Customer123!"
-}
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "data": {
-    "token": "eyJ...",
-    "expiresAt": "2026-09-15T18:00:00Z",
-    "userId": 2,
-    "email": "customer@demo.local",
-    "role": "Customer"
-  }
-}
-```
-
-### Create order
-
-```json
-POST /api/orders
-Authorization: Bearer {token}
-{
-  "items": [
-    { "productId": 1, "quantity": 2 }
-  ]
-}
-```
-
-The server calculates `unitPrice`, `totalAmount`, and stores product name/price snapshots on order items.
-
-### Error response
-
-```json
-{
-  "success": false,
-  "message": "Validation failed.",
-  "errors": {
-    "email": ["Email is required."]
-  }
-}
-```
-
-## Database schema
-
-```text
-Users
-  Id, FirstName, LastName, Email, PasswordHash, Role, CreatedAt, UpdatedAt, IsDeleted
-
-Categories
-  Id, Name, Description, CreatedAt, UpdatedAt
-
-Products
-  Id, Name, Description, Price, Stock, CategoryId, CreatedAt, UpdatedAt
-
-Orders
-  Id, UserId, Status, TotalAmount, CreatedAt, UpdatedAt
-
-OrderItems
-  Id, OrderId, ProductId, ProductName, UnitPrice, Quantity
-```
-
-Relationships:
-
-```text
-User 1 ── * Orders 1 ── * OrderItems * ── 1 Product
-Category 1 ── * Products
-```
-
-## Configuration
-
-Set secrets via environment variables or user secrets — do not commit production secrets.
-
-```bash
-dotnet user-secrets init --project MainServer
-dotnet user-secrets set "JwtSettings:Secret" "your-secure-secret-at-least-32-characters" --project MainServer
-```
-
-## Key design decisions
-
-- **Single project, service layer + DbContext** — no unnecessary repository/CQRS layers
-- **Global exception handler** — consistent JSON errors, no try/catch in every controller
-- **Server-side order totals** — client sends only product IDs and quantities
-- **Order item snapshots** — historical prices preserved when products change
-- **Transactional order creation** — order, items, and stock updates commit or roll back together
-- **Public catalog reads** — products/categories browsable without login; mutations require Admin
+| Method | Route                           | Who                                 |
+| ------ | ------------------------------- | ----------------------------------- |
+| POST   | `/api/auth/login`               | Public                              |
+| POST   | `/api/orders`                   | Logged in (creates order + charges) |
+| GET    | `/api/orders/{id}`              | Owner or admin                      |
+| GET    | `/api/payments/{id}`            | Owner or admin                      |
+| GET    | `/api/payments/order/{orderId}` | Owner or admin                      |
+| GET    | `/api/notifications`            | Admin (`?orderId=` `&status=`)      |

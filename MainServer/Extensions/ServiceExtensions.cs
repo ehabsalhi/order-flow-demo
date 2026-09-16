@@ -1,5 +1,6 @@
 using MainServer.Services.Auth;
 using MainServer.Services.Categories;
+using MainServer.Services.Notifications;
 using MainServer.Services.Orders;
 using MainServer.Services.Payments;
 using MainServer.Services.Products;
@@ -20,6 +21,7 @@ public static class ServiceExtensions
         services.AddScoped<ICategoryService, CategoryService>();
         services.AddScoped<IOrderService, OrderService>();
         services.AddScoped<IPaymentService, PaymentService>();
+        services.AddScoped<INotificationService, NotificationService>();
 
         return services;
     }

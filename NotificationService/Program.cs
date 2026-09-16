@@ -1,4 +1,4 @@
-using MainServer.Extensions;
+using NotificationService.Extensions;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration().WriteTo.Console().CreateBootstrapLogger();
@@ -21,22 +21,18 @@ builder
             new System.Text.Json.Serialization.JsonStringEnumConverter()
         );
     });
-var builderConfiguration = builder.Configuration;
+
+var configuration = builder.Configuration;
 builder
-    .Services.AddDatabase(builderConfiguration)
-    .AddAuthenticationConfiguration(builderConfiguration)
+    .Services.AddDatabase(configuration)
     .AddSwaggerConfiguration()
     .AddApplicationServices()
-    .AddValidation()
-    .AddExceptionHandling()
-    .AddCorsConfiguration(builderConfiguration)
-    .AddRateLimiting(builderConfiguration)
-    .AddPaymentIntegration(builderConfiguration)
-    .AddNotificationIntegration(builderConfiguration);
+    .AddMessaging(configuration)
+    .AddExceptionHandling();
 
 var app = builder.Build();
 
 app.UseApplicationMiddleware();
-await app.SeedDatabaseAsync();
+await app.MigrateDatabaseAsync();
 
 app.Run();
