@@ -22,6 +22,7 @@ public static class ApplicationMiddlewareExtensions
         app.UseCors(CorsExtensions.DevelopmentPolicy);
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseRateLimiter();
         app.MapControllers();
 
         return app;

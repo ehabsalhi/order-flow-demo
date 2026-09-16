@@ -21,15 +21,16 @@ builder
             new System.Text.Json.Serialization.JsonStringEnumConverter()
         );
     });
-
+var builderConfiguration = builder.Configuration;
 builder
-    .Services.AddDatabase(builder.Configuration)
-    .AddAuthenticationConfiguration(builder.Configuration)
+    .Services.AddDatabase(builderConfiguration)
+    .AddAuthenticationConfiguration(builderConfiguration)
     .AddSwaggerConfiguration()
     .AddApplicationServices()
     .AddValidation()
     .AddExceptionHandling()
-    .AddCorsConfiguration(builder.Configuration);
+    .AddCorsConfiguration(builderConfiguration)
+    .AddRateLimiting(builderConfiguration);
 
 var app = builder.Build();
 

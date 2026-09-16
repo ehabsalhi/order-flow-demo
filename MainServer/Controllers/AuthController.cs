@@ -1,11 +1,14 @@
 using MainServer.DTOs.Auth;
 using MainServer.DTOs.Common;
+using MainServer.Helpers;
 using MainServer.Services.Auth;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MainServer.Controllers;
 
 [Route("api/auth")]
+[EnableRateLimiting(RateLimitPolicies.Auth)]
 public class AuthController(IAuthService authService) : ApiControllerBase
 {
     [HttpPost("register")]
