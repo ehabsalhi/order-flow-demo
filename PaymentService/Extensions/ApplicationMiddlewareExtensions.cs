@@ -1,3 +1,4 @@
+using PaymentService.Grpc;
 using Serilog;
 
 namespace PaymentService.Extensions;
@@ -22,6 +23,7 @@ public static class ApplicationMiddlewareExtensions
 
         app.UseSerilogRequestLogging();
         app.MapControllers();
+        app.MapGrpcService<PaymentGrpcService>();
 
         return app;
     }

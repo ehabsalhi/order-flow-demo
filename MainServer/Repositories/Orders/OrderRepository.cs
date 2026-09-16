@@ -88,6 +88,25 @@ public class OrderRepository(AppDbContext context) : IOrderRepository
             .Include(o => o.Items)
             .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
 
+    public async Task<bool> SetStatusAsync(
+        int orderId,
+        OrderStatus status,
+        CancellationToken cancellationToken = default)
+    {
+        var order = await context.Orders.FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+
+        if (order is null || order.Status == status)
+        {
+            return false;
+        }
+
+        order.Status = status;
+        order.UpdatedAt = DateTime.UtcNow;
+        await context.SaveChangesAsync(cancellationToken);
+
+        return true;
+    }
+
     public async Task<PaginationResponse<OrderListResponse>> GetPagedByUserIdAsync(
         int userId,
         PaginationRequest request,

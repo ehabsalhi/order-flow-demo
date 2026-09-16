@@ -12,7 +12,7 @@ using PaymentService.Data;
 namespace PaymentService.Migrations
 {
     [DbContext(typeof(PaymentDbContext))]
-    [Migration("20260916141531_InitialCreate")]
+    [Migration("20260916163734_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -25,6 +25,36 @@ namespace PaymentService.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("PaymentService.Entities.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PublishedAt");
+
+                    b.ToTable("OutboxMessages");
+                });
+
             modelBuilder.Entity("PaymentService.Entities.Payment", b =>
                 {
                     b.Property<int>("Id")
@@ -34,28 +64,25 @@ namespace PaymentService.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Amount")
-                        .HasColumnType("numeric(18,2)");
+                        .HasColumnType("numeric");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Currency")
                         .IsRequired()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)");
+                        .HasColumnType("text");
 
                     b.Property<int>("OrderId")
                         .HasColumnType("integer");
 
                     b.Property<string>("Provider")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
+                        .HasColumnType("text");
 
                     b.Property<string>("TransactionId")
                         .HasMaxLength(64)

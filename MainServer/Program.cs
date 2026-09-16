@@ -30,7 +30,8 @@ builder
     .AddValidation()
     .AddExceptionHandling()
     .AddCorsConfiguration(builderConfiguration)
-    .AddRateLimiting(builderConfiguration);
+    .AddRateLimiting(builderConfiguration)
+    .AddPaymentIntegration(builderConfiguration);
 
 var app = builder.Build();
 

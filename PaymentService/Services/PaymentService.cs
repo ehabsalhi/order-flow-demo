@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using PaymentService.Data;
 using PaymentService.DTOs;
@@ -6,6 +7,7 @@ using PaymentService.Entities;
 using PaymentService.Entities.Enums;
 using PaymentService.Exceptions;
 using PaymentService.Helpers;
+using PaymentService.Messaging;
 using PaymentService.Providers;
 
 namespace PaymentService.Services;
@@ -58,6 +60,8 @@ public class PaymentService(
         payment.Status = result.Success ? PaymentStatus.Succeeded : PaymentStatus.Failed;
         payment.TransactionId = result.TransactionId;
         payment.UpdatedAt = DateTime.UtcNow;
+
+        context.OutboxMessages.Add(BuildStatusChangedMessage(payment));
 
         await context.SaveChangesAsync(cancellationToken);
 
@@ -124,4 +128,26 @@ public class PaymentService(
             payment.CreatedAt,
             payment.UpdatedAt
         );
+
+    private static OutboxMessage BuildStatusChangedMessage(Payment payment)
+    {
+        var statusEvent = new PaymentStatusChangedEvent(
+            payment.Id,
+            payment.OrderId,
+            payment.Status.ToString(),
+            payment.TransactionId,
+            payment.Amount,
+            payment.Currency,
+            payment.Provider.ToString(),
+            payment.UpdatedAt
+        );
+
+        return new OutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            Type = statusEvent.RoutingKey,
+            Payload = JsonSerializer.Serialize(statusEvent),
+            CreatedAt = DateTime.UtcNow,
+        };
+    }
 }
