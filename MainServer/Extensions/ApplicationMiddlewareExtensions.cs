@@ -24,6 +24,7 @@ public static class ApplicationMiddlewareExtensions
         app.UseAuthorization();
         app.UseRateLimiter();
         app.MapControllers();
+        app.MapHealthChecks("/health").AllowAnonymous();
 
         return app;
     }

@@ -53,18 +53,51 @@ MainServer/
 
 ## How to run
 
-### 1. Start PostgreSQL
+### Docker Compose (recommended)
 
-Using Docker:
+Starts Postgres (both databases), RabbitMQ, the Payment Service, and the Main Server:
 
 ```bash
-docker compose up -d
+docker compose -f docker/docker-compose.yml up --build
 ```
 
-Default connection (also in `appsettings.Development.json`):
+| Service | URL |
+|---------|-----|
+| Main Server Swagger | http://localhost:3000/swagger |
+| Payment Service Swagger | http://localhost:3100/swagger |
+| RabbitMQ management | http://localhost:15672 (guest / guest) |
+| Postgres | localhost:5432 |
+
+- Main Server DB: `orderflow`
+- Payment Service DB: `orderflow_payments` (created by `docker/postgres/init.sql`)
+
+If Postgres was created by an older compose file, recreate volumes so the second database is initialized:
+
+```bash
+docker compose -f docker/docker-compose.yml down -v
+docker compose -f docker/docker-compose.yml up --build
+```
+
+Stop with `Ctrl+C`, or run in the background with `docker compose -f docker/docker-compose.yml up --build -d`.
+
+### Run locally without Docker for the apps
+
+### 1. Start PostgreSQL and RabbitMQ
+
+```bash
+docker compose -f docker/docker-compose.yml up -d postgres rabbitmq
+```
+
+Default Main Server connection (also in `appsettings.Development.json`):
 
 ```text
 Host=localhost;Port=5432;Database=orderflow;Username=postgres;Password=postgres
+```
+
+Create the payments database if it does not exist:
+
+```bash
+psql -U postgres -c "CREATE DATABASE orderflow_payments;"
 ```
 
 ### 2. Restore, migrate, and run
@@ -72,12 +105,14 @@ Host=localhost;Port=5432;Database=orderflow;Username=postgres;Password=postgres
 ```bash
 dotnet restore
 dotnet ef database update --project MainServer
+dotnet ef database update --project PaymentService
+dotnet run --project PaymentService
 dotnet run --project MainServer
 ```
 
-Swagger UI: `http://localhost:5111/swagger`
+Swagger UI: `http://localhost:3000/swagger`
 
-On first run in **Development**, the app applies migrations and seeds demo data automatically.
+On first run in **Development**, the Main Server applies migrations and seeds demo data automatically.
 
 ## Development credentials (dev only)
 

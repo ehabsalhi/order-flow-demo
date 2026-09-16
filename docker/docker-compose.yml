@@ -1,0 +1,100 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: orderflow-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: orderflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d orderflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: orderflow-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  payment-service:
+    build:
+      context: ..
+      dockerfile: docker/PaymentService.Dockerfile
+    container_name: orderflow-payment-service
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=orderflow_payments;Username=postgres;Password=postgres
+      Kestrel__Endpoints__Rest__Url: http://+:3100
+      Kestrel__Endpoints__Rest__Protocols: Http1
+      Kestrel__Endpoints__Grpc__Url: http://+:3101
+      Kestrel__Endpoints__Grpc__Protocols: Http2
+      RabbitMq__HostName: rabbitmq
+    ports:
+      - "3100:3100"
+      - "3101:3101"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/3100'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  main-server:
+    build:
+      context: ..
+      dockerfile: docker/MainServer.Dockerfile
+    container_name: orderflow-main-server
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=orderflow;Username=postgres;Password=postgres
+      Services__PaymentServiceHttp: http://payment-service:3100
+      Services__PaymentServiceGrpc: http://payment-service:3101
+      RabbitMq__HostName: rabbitmq
+      JwtSettings__Secret: DEV_ONLY_SECRET_CHANGE_BEFORE_PRODUCTION_32CHARS
+    ports:
+      - "3000:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8080'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  rabbitmq_data:

@@ -13,6 +13,7 @@ public static class ServiceExtensions
         services.AddRepositories();
         services.AddObjectMapping();
         services.AddHttpContextAccessor();
+        services.AddHealthChecks();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IProductService, ProductService>();

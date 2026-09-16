@@ -24,6 +24,7 @@ public static class ApplicationMiddlewareExtensions
         app.UseSerilogRequestLogging();
         app.MapControllers();
         app.MapGrpcService<PaymentGrpcService>();
+        app.MapHealthChecks("/health");
 
         return app;
     }
