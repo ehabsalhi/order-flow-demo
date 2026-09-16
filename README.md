@@ -14,13 +14,12 @@ Stop:
 docker compose -f docker/docker-compose.yml down
 ```
 
-| What                    | URL                                                              |
-| ----------------------- | ---------------------------------------------------------------- |
-| Main Server Swagger     | [http://localhost:3000/swagger](http://localhost:3000/swagger)   |
-| Payment Service Swagger | [http://localhost:3100/swagger](http://localhost:3100/swagger)   |
-| Notification Swagger    | [http://localhost:3200/swagger](http://localhost:3200/swagger)   |
-| RabbitMQ UI             | [http://localhost:15672](http://localhost:15672) (guest / guest) |
-| Postgres                | `localhost:5432`                                                 |
+| What                | URL                                                            |
+| ------------------- | -------------------------------------------------------------- |
+| Main Server Swagger | [http://localhost:3000/swagger](http://localhost:3000/swagger) |
+| Postgres            | `localhost:5432`                                               |
+
+Payment Service, Notification Service, and RabbitMQ listen only on the Docker network. They are not published to the host.
 
 Demo login:
 
@@ -82,7 +81,7 @@ Each service can migrate, scale, and fail on its own. They talk only over APIs a
 
 So the Payment Service writes the payment **and** the event row in the **same** database commit. A background worker then sends the row to RabbitMQ and sets `PublishedAt`. If RabbitMQ is down, the API still works; events drain when the broker is back. Retry cap parks a message after 5 failed publishes (`RetryCount`) instead of looping forever.
 
-HTTP is used for **reads** (`GET /api/payments/...`) because pagination and Swagger fit REST.
+HTTP is used for **reads** (`GET /api/payments/...`) because pagination fits REST. The client never calls Payment Service directly.
 
 ## Structure
 
@@ -107,7 +106,7 @@ Notification Service: `Controllers` → `Services` → `NotificationDbContext`. 
 - **FluentValidation** — input validation
 - **gRPC** — sync charge between services
 - **RabbitMQ + outbox** — async status events without losing messages if the broker is down
-- **Swagger** — try the APIs
+- **Swagger** — try the Main Server APIs
 - **Docker Compose** — run everything together
 
 ## Useful APIs (Main Server)

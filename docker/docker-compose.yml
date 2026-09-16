@@ -19,14 +19,11 @@ services:
     restart: unless-stopped
 
   rabbitmq:
-    image: rabbitmq:3.13-management-alpine
+    image: rabbitmq:3.13-alpine
     container_name: orderflow-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
-    ports:
-      - "5672:5672"
-      - "15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -49,9 +46,6 @@ services:
       Kestrel__Endpoints__Grpc__Url: http://+:3101
       Kestrel__Endpoints__Grpc__Protocols: Http2
       RabbitMq__HostName: rabbitmq
-    ports:
-      - "3100:3100"
-      - "3101:3101"
     depends_on:
       postgres:
         condition: service_healthy
@@ -75,8 +69,6 @@ services:
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=orderflow_notifications;Username=postgres;Password=postgres
       RabbitMq__HostName: rabbitmq
-    ports:
-      - "3200:8080"
     depends_on:
       postgres:
         condition: service_healthy

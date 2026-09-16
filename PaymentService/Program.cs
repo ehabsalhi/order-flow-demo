@@ -25,7 +25,6 @@ builder
 var configuration = builder.Configuration;
 builder
     .Services.AddDatabase(configuration)
-    .AddSwaggerConfiguration()
     .AddApplicationServices()
     .AddGrpcConfiguration()
     .AddMessaging(configuration)

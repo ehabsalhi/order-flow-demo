@@ -28,7 +28,6 @@ cross-database foreign key.
 - RabbitMQ (`RabbitMQ.Client`) for asynchronous events, with a transactional outbox
 - FluentValidation
 - Serilog structured logging
-- Swagger / OpenAPI
 - Dependency Injection, async/await, DTOs
 
 ## Project structure
@@ -228,11 +227,11 @@ Only needed to actually deliver async events. The API works without it — event
 outbox until the broker is reachable.
 
 ```bash
-docker run -d --name orderflow-rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+docker run -d --name orderflow-rabbitmq rabbitmq:3.13-alpine
 ```
 
-Management UI: `http://localhost:15672` (guest / guest). Adjust the `RabbitMq` section in
-`appsettings.json` if your broker differs.
+Do not publish broker ports to the host. Adjust the `RabbitMq` section in `appsettings.json` if
+your broker differs.
 
 ### 3. Apply migrations and run
 
@@ -243,16 +242,16 @@ dotnet run --project PaymentService
 
 Migrations are also applied automatically on startup.
 
-Endpoints (dev):
+Endpoints (dev, not published in Docker Compose):
 
-- REST + Swagger UI: `http://localhost:3100/swagger`
+- REST: `http://localhost:3100`
 - gRPC (HTTP/2): `http://localhost:3101`
 
 ## Design decisions
 
 - **Independent database** — separate `orderflow_payments`; no FK to the Main Server.
 - **Sync command via gRPC** — the Main Server charges an order and gets the result back.
-- **Sync queries via HTTP** — payment reads stay REST (pagination, Swagger, easy to call).
+- **Sync queries via HTTP** — payment reads stay REST (pagination, easy to call from Main Server).
 - **Async events via RabbitMQ + outbox** — status changes are published reliably, decoupling the
   Order service from the payment call.
 - **Idempotency guard** — a second charge for an already-paid order returns `409`, preventing
