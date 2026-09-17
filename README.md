@@ -2,6 +2,10 @@
 
 An e-commerce demo that splits **orders**, **payments**, and **notifications** into separate services, each with its own PostgreSQL database. The client talks only to the Main Server.
 
+## Live demo
+
+Deployed on **AWS EC2**: [http://13.61.181.22/swagger/index.html](http://13.61.181.22/swagger/index.html)
+
 ## Run with Docker
 
 From the repo root:
